@@ -10,15 +10,29 @@ import {
   MapPin, 
   CreditCard,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  MessageSquare,
+  User as UserIcon,
+  ShieldCheck
 } from 'lucide-react';
-import { Order } from '../types';
+import { Order, User } from '../types';
 import { api } from '../services/api';
 
-export const OrdersTracker: React.FC = () => {
+interface OrdersTrackerProps {
+  currentUser?: User | null;
+  onOpenAuth?: () => void;
+  onSelectProductForReview?: (productId: string) => void;
+}
+
+export const OrdersTracker: React.FC<OrdersTrackerProps> = ({
+  currentUser,
+  onOpenAuth,
+  onSelectProductForReview,
+}) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [onlyMine, setOnlyMine] = useState(Boolean(currentUser));
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [actionMessage, setActionMessage] = useState('');
@@ -29,10 +43,13 @@ export const OrdersTracker: React.FC = () => {
       const data = await api.getOrders({
         search: search.trim() || undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
+        email: onlyMine && currentUser?.email ? currentUser.email : undefined,
       });
       setOrders(data);
-      if (data.length > 0 && !selectedOrder) {
+      if (data.length > 0) {
         setSelectedOrder(data[0]);
+      } else {
+        setSelectedOrder(null);
       }
     } catch (err) {
       console.error('Failed to load orders', err);
@@ -43,7 +60,7 @@ export const OrdersTracker: React.FC = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [statusFilter]);
+  }, [statusFilter, onlyMine, currentUser]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +141,67 @@ export const OrdersTracker: React.FC = () => {
             <span>{actionMessage}</span>
           </div>
         )}
+
+        {/* User Account Tracking Banner */}
+        {currentUser ? (
+          <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#141926] via-[#1a2133] to-[#141926] border border-[#2b344a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#20273c] border border-[#c5a880]/40 flex items-center justify-center text-[#c5a880]">
+                <UserIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <span>Collector: {currentUser.name}</span>
+                  <span className="text-[10px] bg-[#c5a880]/20 text-[#c5a880] border border-[#c5a880]/40 px-1.5 py-0.2 rounded font-mono uppercase">
+                    {currentUser.role === 'manager' ? 'Store Manager' : 'Verified Member'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#9ca4b9]">{currentUser.email}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setOnlyMine(true)}
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  onlyMine
+                    ? 'bg-[#c5a880] text-[#0b0c10]'
+                    : 'bg-[#181d2a] text-neutral-400 hover:text-white border border-[#2b3348]'
+                }`}
+              >
+                My Account Orders
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyMine(false)}
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  !onlyMine
+                    ? 'bg-[#c5a880] text-[#0b0c10]'
+                    : 'bg-[#181d2a] text-neutral-400 hover:text-white border border-[#2b3348]'
+                }`}
+              >
+                All Store Orders
+              </button>
+            </div>
+          </div>
+        ) : onOpenAuth ? (
+          <div className="mb-6 p-4 rounded-xl bg-[#141926] border border-[#242c3e] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-6 h-6 text-[#c5a880] shrink-0" />
+              <div>
+                <div className="text-xs font-bold text-white">Have a SERENO Account?</div>
+                <div className="text-[11px] text-[#9fa6b9]">Sign in to automatically view your purchases, track delivery progress, and submit reviews.</div>
+              </div>
+            </div>
+            <button
+              onClick={onOpenAuth}
+              className="px-4 py-2 bg-[#c5a880] text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[#d8c29e] transition-colors whitespace-nowrap"
+            >
+              Sign In to Account
+            </button>
+          </div>
+        ) : null}
 
         {/* Search & Status Filters */}
         <div className="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#121622] p-4 rounded-xl border border-[#232838]">
@@ -362,20 +440,36 @@ export const OrdersTracker: React.FC = () => {
                     </h3>
                     <div className="divide-y divide-[#1e2333] border border-[#232838] rounded-xl bg-[#161a25] overflow-hidden">
                       {selectedOrder.items.map((it, idx) => (
-                        <div key={idx} className="p-3 flex items-center justify-between gap-4">
+                        <div key={idx} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <img
                               src={it.productImage}
                               alt={it.productName}
-                              className="w-12 h-12 rounded bg-[#1c212e] object-contain p-1 border border-[#2b3244]"
+                              className="w-14 h-14 rounded-lg bg-[#1c212e] object-contain p-1 border border-[#2b3244]"
                             />
                             <div>
-                              <div className="text-xs font-semibold text-white font-serif">{it.productName}</div>
+                              <div className="text-xs sm:text-sm font-semibold text-white font-serif">{it.productName}</div>
                               <div className="text-[10px] text-neutral-400 font-mono">SKU: {it.sku} • Qty: {it.quantity}</div>
+                              <div className="font-mono text-xs font-bold text-[#c5a880] mt-0.5 sm:hidden">
+                                ${(it.price * it.quantity).toFixed(2)}
+                              </div>
                             </div>
                           </div>
-                          <div className="font-mono text-xs font-bold text-white">
-                            ${(it.price * it.quantity).toFixed(2)}
+
+                          <div className="flex items-center justify-between sm:justify-end gap-4">
+                            <div className="hidden sm:block font-mono text-xs font-bold text-white">
+                              ${(it.price * it.quantity).toFixed(2)}
+                            </div>
+                            {onSelectProductForReview && (
+                              <button
+                                type="button"
+                                onClick={() => onSelectProductForReview(it.productId)}
+                                className="px-3 py-1.5 rounded-lg bg-[#1f2638] hover:bg-[#c5a880] hover:text-[#0b0c10] text-[#c5a880] border border-[#353f58] text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Leave Review</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

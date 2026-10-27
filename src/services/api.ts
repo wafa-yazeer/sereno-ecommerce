@@ -1,4 +1,4 @@
-import { Product, Category, Order, Review, Coupon, ServerHealth, ApiResponse } from '../types';
+import { Product, Category, Order, Review, Coupon, ServerHealth, ApiResponse, User, AuthResponse } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from '../data/initialCatalog';
 
 const BASE_URL = '/api';
@@ -213,14 +213,20 @@ export const api = {
   },
 
   // Orders
-  async getOrders(params?: { status?: string; search?: string }): Promise<Order[]> {
+  async getOrders(params?: { status?: string; search?: string; email?: string; userId?: string }): Promise<Order[]> {
     const query = new URLSearchParams();
     if (params?.status && params.status !== 'all') query.append('status', params.status);
     if (params?.search) query.append('search', params.search);
+    if (params?.email) query.append('email', params.email);
+    if (params?.userId) query.append('userId', params.userId);
 
     const result = await safeFetchJson<Order[]>(`${BASE_URL}/orders?${query.toString()}`);
     if (result.ok && result.data && result.data.length > 0) {
-      return result.data;
+      let backendOrders = result.data;
+      if (params?.email) {
+        backendOrders = backendOrders.filter((o) => o.customerEmail.toLowerCase() === params.email?.toLowerCase());
+      }
+      return backendOrders;
     }
 
     // Merge backend with localStorage orders
@@ -234,12 +240,23 @@ export const api = {
       }
     }
 
+    if (params?.email) {
+      combined = combined.filter((o) => o.customerEmail.toLowerCase() === params.email?.toLowerCase());
+    }
+    if (params?.userId) {
+      combined = combined.filter((o) => o.userId === params.userId);
+    }
     if (params?.status && params.status !== 'all') {
       combined = combined.filter((o) => o.status === params.status);
     }
     if (params?.search) {
       const q = params.search.toLowerCase();
-      combined = combined.filter((o) => o.orderNumber.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q));
+      combined = combined.filter(
+        (o) =>
+          o.orderNumber.toLowerCase().includes(q) ||
+          o.customerName.toLowerCase().includes(q) ||
+          (o.trackingNumber && o.trackingNumber.toLowerCase().includes(q))
+      );
     }
     return combined;
   },
@@ -256,6 +273,7 @@ export const api = {
   },
 
   async createOrder(orderPayload: {
+    userId?: string;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
@@ -500,6 +518,98 @@ export const api = {
       discount: 0,
       message: `Voucher code "${code}" is invalid. Try SERENO10, HOROLOGY20, or ATELIER50.`,
     };
+  },
+
+  // ================= AUTH & USER MANAGEMENT =================
+  async register(payload: {
+    name: string;
+    email: string;
+    password?: string;
+    role?: 'customer' | 'manager';
+    phone?: string;
+    shippingAddress?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+  }): Promise<{ user: User; token: string }> {
+    const result = await safeFetchJson<{ user: User; token: string }>(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (result.ok && result.data) {
+      return result.data;
+    }
+
+    // Client-side fallback if backend is unreachable
+    const fallbackUser: User = {
+      id: `usr-${Date.now()}`,
+      name: payload.name,
+      email: payload.email,
+      role: payload.role || 'customer',
+      phone: payload.phone || '',
+      shippingAddress: payload.shippingAddress || '',
+      city: payload.city || '',
+      postalCode: payload.postalCode || '',
+      country: payload.country || 'Switzerland',
+      createdAt: new Date().toISOString(),
+    };
+    return { user: fallbackUser, token: `tok-${Date.now()}` };
+  },
+
+  async login(payload: {
+    email: string;
+    password?: string;
+  }): Promise<{ user: User; token: string }> {
+    const result = await safeFetchJson<{ user: User; token: string }>(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (result.ok && result.data) {
+      return result.data;
+    }
+
+    if (result.error && !result.error.includes('Failed to fetch') && !result.error.includes('Network')) {
+      throw new Error(result.error);
+    }
+
+    // Client-side fallback for demo convenience
+    const isManager = payload.email.toLowerCase().includes('manager') || payload.email.toLowerCase().includes('admin');
+    const fallbackUser: User = {
+      id: isManager ? 'usr-manager-1' : 'usr-customer-1',
+      name: isManager ? 'Laurent Dubois' : 'Alexander Vance',
+      email: payload.email,
+      role: isManager ? 'manager' : 'customer',
+      phone: '+41 22 819 4400',
+      shippingAddress: 'Rue du Rhône 42',
+      city: 'Genève',
+      postalCode: '1204',
+      country: 'Switzerland',
+      createdAt: new Date().toISOString(),
+    };
+    return { user: fallbackUser, token: `tok-${Date.now()}` };
+  },
+
+  async getUsers(): Promise<User[]> {
+    const result = await safeFetchJson<User[]>(`${BASE_URL}/auth/users`);
+    if (result.ok && result.data) return result.data;
+    return [];
+  },
+
+  async updateProfile(
+    userId: string,
+    updates: Partial<User>
+  ): Promise<User> {
+    const result = await safeFetchJson<User>(`${BASE_URL}/auth/profile/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (result.ok && result.data) return result.data;
+    return updates as User;
   },
 
   // System

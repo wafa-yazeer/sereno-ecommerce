@@ -9,7 +9,7 @@ import {
   AlertCircle,
   ShieldCheck
 } from 'lucide-react';
-import { CartItem, Order } from '../types';
+import { CartItem, Order, User } from '../types';
 import { api } from '../services/api';
 
 interface CheckoutModalProps {
@@ -20,6 +20,7 @@ interface CheckoutModalProps {
   discountAmount: number;
   onOrderCompleted: (order: Order) => void;
   onClearCart: () => void;
+  currentUser: User | null;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -30,19 +31,33 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   discountAmount,
   onOrderCompleted,
   onClearCart,
+  currentUser,
 }) => {
-  const [customerName, setCustomerName] = useState('Alexander Vance');
-  const [customerEmail, setCustomerEmail] = useState('alexander.vance@horology-sereno.ch');
-  const [customerPhone, setCustomerPhone] = useState('+41 22 819 4400');
-  const [shippingAddress, setShippingAddress] = useState('800 Montgomery St, Financial District');
-  const [city, setCity] = useState('San Francisco');
-  const [postalCode, setPostalCode] = useState('94133');
-  const [country, setCountry] = useState('United States');
+  const [customerName, setCustomerName] = useState(currentUser?.name || 'Alexander Vance');
+  const [customerEmail, setCustomerEmail] = useState(currentUser?.email || 'alexander@sereno.ch');
+  const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '+41 22 819 4400');
+  const [shippingAddress, setShippingAddress] = useState(currentUser?.shippingAddress || 'Rue du Rhône 42');
+  const [city, setCity] = useState(currentUser?.city || 'Genève');
+  const [postalCode, setPostalCode] = useState(currentUser?.postalCode || '1204');
+  const [country, setCountry] = useState(currentUser?.country || 'Switzerland');
   const [paymentMethod, setPaymentMethod] = useState<'Credit / Debit Card' | 'Cash on Delivery (COD)' | 'Bank Transfer'>('Credit / Debit Card');
-  const [notes, setNotes] = useState('Please handle with white-glove security delivery.');
+  const [notes, setNotes] = useState('White-glove Swiss insured delivery required.');
   const [cardNumber, setCardNumber] = useState('4242 •••• •••• 4242');
   const [cardExpiry, setCardExpiry] = useState('12/28');
   const [cardCvc, setCardCvc] = useState('888');
+
+  // Sync state if currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name) setCustomerName(currentUser.name);
+      if (currentUser.email) setCustomerEmail(currentUser.email);
+      if (currentUser.phone) setCustomerPhone(currentUser.phone);
+      if (currentUser.shippingAddress) setShippingAddress(currentUser.shippingAddress);
+      if (currentUser.city) setCity(currentUser.city);
+      if (currentUser.postalCode) setPostalCode(currentUser.postalCode);
+      if (currentUser.country) setCountry(currentUser.country);
+    }
+  }, [currentUser]);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -72,6 +87,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }));
 
       const newOrder = await api.createOrder({
+        userId: currentUser?.id,
         customerName,
         customerEmail,
         customerPhone,

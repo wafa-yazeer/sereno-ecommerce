@@ -1,10 +1,11 @@
-import { Product, Category, Order, Review, Coupon } from '../src/types';
+import { Product, Category, Order, Review, Coupon, User } from '../src/types';
 import {
   INITIAL_CATEGORIES,
   INITIAL_PRODUCTS,
   INITIAL_ORDERS,
   INITIAL_REVIEWS,
   INITIAL_COUPONS,
+  INITIAL_USERS,
 } from './data';
 
 class DataStore {
@@ -13,6 +14,7 @@ class DataStore {
   private orders: Order[];
   private reviews: Review[];
   private coupons: Coupon[];
+  private users: (User & { password?: string })[];
   private startTime: number;
 
   constructor() {
@@ -22,6 +24,7 @@ class DataStore {
     this.orders = JSON.parse(JSON.stringify(INITIAL_ORDERS));
     this.reviews = JSON.parse(JSON.stringify(INITIAL_REVIEWS));
     this.coupons = JSON.parse(JSON.stringify(INITIAL_COUPONS));
+    this.users = JSON.parse(JSON.stringify(INITIAL_USERS));
     this.updateCategoryCounts();
   }
 
@@ -31,6 +34,7 @@ class DataStore {
     this.orders = JSON.parse(JSON.stringify(INITIAL_ORDERS));
     this.reviews = JSON.parse(JSON.stringify(INITIAL_REVIEWS));
     this.coupons = JSON.parse(JSON.stringify(INITIAL_COUPONS));
+    this.users = JSON.parse(JSON.stringify(INITIAL_USERS));
     this.updateCategoryCounts();
   }
 
@@ -274,8 +278,17 @@ class DataStore {
   }
 
   // ================= ORDERS CRUD =================
-  public getOrders(params?: { status?: string; search?: string }): Order[] {
+  public getOrders(params?: { status?: string; search?: string; email?: string; userId?: string }): Order[] {
     let result = [...this.orders];
+
+    if (params?.email) {
+      const emailLower = params.email.toLowerCase().trim();
+      result = result.filter((o) => o.customerEmail.toLowerCase().trim() === emailLower);
+    }
+
+    if (params?.userId) {
+      result = result.filter((o) => o.userId === params.userId);
+    }
 
     if (params?.status && params.status !== 'all') {
       result = result.filter((o) => o.status.toLowerCase() === params.status?.toLowerCase());
@@ -288,7 +301,7 @@ class DataStore {
           o.orderNumber.toLowerCase().includes(q) ||
           o.customerName.toLowerCase().includes(q) ||
           o.customerEmail.toLowerCase().includes(q) ||
-          o.trackingNumber.toLowerCase().includes(q) ||
+          (o.trackingNumber && o.trackingNumber.toLowerCase().includes(q)) ||
           o.city.toLowerCase().includes(q)
       );
     }
@@ -302,6 +315,7 @@ class DataStore {
   }
 
   public createOrder(payload: {
+    userId?: string;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
@@ -367,6 +381,7 @@ class DataStore {
     const newOrder: Order = {
       id: 'ord-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 5),
       orderNumber,
+      userId: payload.userId,
       customerName: payload.customerName.trim(),
       customerEmail: payload.customerEmail.trim(),
       customerPhone: payload.customerPhone.trim(),
@@ -498,6 +513,75 @@ class DataStore {
     };
   }
 
+  // ================= USERS & AUTH =================
+  public getUsers(): User[] {
+    return this.users.map(({ password, ...u }) => u);
+  }
+
+  public findUserByEmail(email: string): (User & { password?: string }) | undefined {
+    return this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  public getUserById(id: string): User | undefined {
+    const user = this.users.find((u) => u.id === id);
+    if (!user) return undefined;
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  public createUser(userData: {
+    name: string;
+    email: string;
+    password?: string;
+    role?: 'customer' | 'manager';
+    phone?: string;
+    shippingAddress?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+  }): User {
+    const existing = this.findUserByEmail(userData.email);
+    if (existing) {
+      throw new Error(`An account with email ${userData.email} already exists.`);
+    }
+
+    const newUser: User & { password?: string } = {
+      id: `usr-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      name: userData.name.trim(),
+      email: userData.email.toLowerCase().trim(),
+      role: userData.role || 'customer',
+      password: userData.password || 'password123',
+      phone: userData.phone || '',
+      shippingAddress: userData.shippingAddress || '',
+      city: userData.city || '',
+      postalCode: userData.postalCode || '',
+      country: userData.country || 'Switzerland',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.users.unshift(newUser);
+    const { password, ...safeUser } = newUser;
+    return safeUser;
+  }
+
+  public updateUser(
+    id: string,
+    updates: Partial<Omit<User, 'id' | 'email' | 'createdAt'>>
+  ): User {
+    const index = this.users.findIndex((u) => u.id === id);
+    if (index === -1) {
+      throw new Error(`User with ID "${id}" not found.`);
+    }
+
+    this.users[index] = {
+      ...this.users[index],
+      ...updates,
+    };
+
+    const { password, ...safeUser } = this.users[index];
+    return safeUser;
+  }
+
   public getSummaryStats() {
     const totalRevenue = this.orders
       .filter((o) => o.status !== 'Cancelled')
@@ -511,6 +595,7 @@ class DataStore {
       totalCategories: this.categories.length,
       totalOrders: this.orders.length,
       totalReviews: this.reviews.length,
+      totalUsers: this.users.length,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       pendingOrders,
       lowStockCount,

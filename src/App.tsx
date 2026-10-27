@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Product, Category, CartItem, Order } from './types';
+import { Product, Category, CartItem, Order, User } from './types';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES } from './data/initialCatalog';
 import { api } from './services/api';
 
@@ -20,9 +20,39 @@ import { OrdersTracker } from './components/OrdersTracker';
 import { AdminPortal } from './components/AdminPortal';
 import { AtelierModal } from './components/AtelierModal';
 import { WishlistModal } from './components/WishlistModal';
+import { AuthModal } from './components/AuthModal';
+import { UserProfileModal } from './components/UserProfileModal';
 import { Footer } from './components/Footer';
 
 export default function App() {
+  // User Authentication State (Persisted in localStorage)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('sereno_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // ignore
+    }
+    // Default initial customer session for immediate demonstration
+    return {
+      id: 'usr-customer-1',
+      name: 'Alexander Vance',
+      email: 'alexander@sereno.ch',
+      role: 'customer',
+      phone: '+41 22 819 4400',
+      shippingAddress: 'Rue du Rhône 42',
+      city: 'Genève',
+      postalCode: '1204',
+      country: 'Switzerland',
+    };
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
+  const [authRedirectNotice, setAuthRedirectNotice] = useState('');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [productDetailTab, setProductDetailTab] = useState<'specs' | 'reviews'>('specs');
+
   // Navigation: 'shop' | 'orders' | 'admin'
   const [activeView, setActiveView] = useState<'shop' | 'orders' | 'admin'>('shop');
 
@@ -93,6 +123,18 @@ export default function App() {
       // ignore
     }
   }, [wishlist]);
+
+  useEffect(() => {
+    try {
+      if (currentUser) {
+        localStorage.setItem('sereno_user', JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem('sereno_user');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [currentUser]);
 
   // Fetch live products and categories from backend
   const loadData = async () => {
@@ -201,6 +243,33 @@ export default function App() {
     loadData(); // refresh stock numbers
   };
 
+  const handleOpenAuthModal = (mode: 'login' | 'register' = 'login', notice = '') => {
+    setAuthInitialMode(mode);
+    setAuthRedirectNotice(notice);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleProceedToCheckout = () => {
+    if (!currentUser) {
+      setIsCartOpen(false);
+      handleOpenAuthModal(
+        'register',
+        'Please create an account or sign in to complete your timepiece acquisition and secure your insured warranty.'
+      );
+      return;
+    }
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleOpenProductReviews = (productId: string) => {
+    const found = products.find((p) => p.id === productId) || INITIAL_PRODUCTS.find((p) => p.id === productId);
+    if (found) {
+      setSelectedProduct(found);
+      setProductDetailTab('reviews');
+    }
+  };
+
   const featuredProduct = products.find((p) => p.featured) || products[0];
 
   return (
@@ -220,6 +289,9 @@ export default function App() {
         onOpenWishlist={() => setIsWishlistOpen(true)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        currentUser={currentUser}
+        onOpenAuth={() => handleOpenAuthModal('login')}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* Main View Router */}
@@ -233,7 +305,10 @@ export default function App() {
                 const el = document.getElementById('collection-grid-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              onSelectProduct={(p) => setSelectedProduct(p)}
+              onSelectProduct={(p) => {
+                setSelectedProduct(p);
+                setProductDetailTab('specs');
+              }}
               onOpenAtelier={() => setIsAtelierOpen(true)}
             />
 
@@ -252,7 +327,10 @@ export default function App() {
               setSortOption={setSortOption}
               priceRange={priceRange}
               setPriceRange={setPriceRange}
-              onSelectProduct={(p) => setSelectedProduct(p)}
+              onSelectProduct={(p) => {
+                setSelectedProduct(p);
+                setProductDetailTab('specs');
+              }}
               onAddToCart={(p) => handleAddToCart(p, 1)}
               wishlist={wishlist}
               onToggleWishlist={handleToggleWishlist}
@@ -263,13 +341,28 @@ export default function App() {
 
         {activeView === 'orders' && (
           <div className="py-10">
-            <OrdersTracker />
+            <OrdersTracker
+              currentUser={currentUser}
+              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in to access your complete timepiece order history.')}
+              onSelectProductForReview={handleOpenProductReviews}
+            />
           </div>
         )}
 
         {activeView === 'admin' && (
-          <div className="py-10">
-            <AdminPortal />
+          <div className="py-6">
+            <AdminPortal
+              currentUser={currentUser}
+              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in as a Store Manager for verified management access.')}
+              onAdminLogin={(user) => {
+                setCurrentUser(user);
+              }}
+              onAdminLogout={() => {
+                setCurrentUser(null);
+                localStorage.removeItem('sereno_user');
+              }}
+              onNavigateToUserPortal={() => setActiveView('shop')}
+            />
           </div>
         )}
       </main>
@@ -289,6 +382,9 @@ export default function App() {
           setSelectedProduct(updated);
           loadData();
         }}
+        currentUser={currentUser}
+        onOpenAuth={() => handleOpenAuthModal('login')}
+        initialTab={productDetailTab}
       />
 
       {/* Shopping Cart Drawer */}
@@ -299,10 +395,7 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
-        onOpenCheckout={() => {
-          setIsCartOpen(false);
-          setIsCheckoutOpen(true);
-        }}
+        onOpenCheckout={handleProceedToCheckout}
         appliedCoupon={appliedCoupon}
         onApplyCoupon={handleApplyCoupon}
       />
@@ -314,7 +407,10 @@ export default function App() {
         products={products}
         wishlistIds={wishlist}
         onToggleWishlist={handleToggleWishlist}
-        onSelectProduct={(p) => setSelectedProduct(p)}
+        onSelectProduct={(p) => {
+          setSelectedProduct(p);
+          setProductDetailTab('specs');
+        }}
         onAddToCart={(p) => handleAddToCart(p, 1)}
       />
 
@@ -327,6 +423,7 @@ export default function App() {
         discountAmount={discountAmount}
         onOrderCompleted={handleOrderCompleted}
         onClearCart={handleClearCart}
+        currentUser={currentUser}
       />
 
       {/* Order Confirmed Success Modal */}
@@ -352,6 +449,34 @@ export default function App() {
           }, 100);
         }}
       />
+
+      {/* Authentication Modal (Create Account / Sign In) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthModalOpen(false);
+        }}
+        initialMode={authInitialMode}
+        redirectNotice={authRedirectNotice}
+      />
+
+      {/* User Profile Modal */}
+      {currentUser && (
+        <UserProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          user={currentUser}
+          onUpdateUser={setCurrentUser}
+          onLogout={() => {
+            setCurrentUser(null);
+            localStorage.removeItem('sereno_user');
+          }}
+          onNavigateToOrders={() => setActiveView('orders')}
+          onNavigateToManagerPortal={() => setActiveView('admin')}
+        />
+      )}
     </div>
   );
 }

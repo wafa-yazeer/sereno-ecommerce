@@ -38,6 +38,28 @@ export interface CartItem {
   quantity: number;
 }
 
+export type UserRole = 'customer' | 'manager';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  shippingAddress?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  createdAt?: string;
+  avatarUrl?: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token?: string;
+  message?: string;
+}
+
 export interface OrderItem {
   id?: number;
   productId: string;
@@ -52,6 +74,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderNumber: string;
+  userId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;

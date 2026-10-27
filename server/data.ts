@@ -455,3 +455,46 @@ export const INITIAL_COUPONS: Coupon[] = [
     active: true,
   },
 ];
+
+export const INITIAL_USERS = [
+  {
+    id: 'usr-customer-1',
+    name: 'Alexander Vance',
+    email: 'alexander@sereno.ch',
+    role: 'customer' as const,
+    password: 'password123',
+    phone: '+41 22 819 4400',
+    shippingAddress: 'Rue du Rhône 42',
+    city: 'Genève',
+    postalCode: '1204',
+    country: 'Switzerland',
+    createdAt: '2026-01-15T09:00:00Z',
+  },
+  {
+    id: 'usr-admin-master',
+    name: 'Executive Administrator',
+    email: 'admin@sereno.ch',
+    role: 'manager' as const,
+    password: 'admin123',
+    phone: '+41 22 819 4499',
+    shippingAddress: 'Headquarters SERENO, Rue du Rhône 10',
+    city: 'Genève',
+    postalCode: '1204',
+    country: 'Switzerland',
+    createdAt: '2025-10-10T08:00:00Z',
+  },
+  {
+    id: 'usr-manager-1',
+    name: 'Laurent Dubois',
+    email: 'manager@sereno.ch',
+    role: 'manager' as const,
+    password: 'admin',
+    phone: '+41 22 819 4488',
+    shippingAddress: 'Atelier SERENO, Quai du Mont-Blanc',
+    city: 'Genève',
+    postalCode: '1201',
+    country: 'Switzerland',
+    createdAt: '2025-11-01T08:00:00Z',
+  },
+];
+

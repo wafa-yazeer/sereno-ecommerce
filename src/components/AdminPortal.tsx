@@ -14,22 +14,53 @@ import {
   RotateCcw,
   DollarSign,
   TrendingUp,
-  X
+  X,
+  Briefcase,
+  ShieldCheck,
+  User as UserIcon,
+  Lock,
+  Key,
+  LogOut,
+  ArrowLeft,
+  Users,
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
-import { Product, Category, Order, Review } from '../types';
+import { Product, Category, Order, Review, User } from '../types';
 import { api } from '../services/api';
 
-export const AdminPortal: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'products' | 'categories' | 'orders' | 'reviews'>('products');
+interface AdminPortalProps {
+  currentUser?: User | null;
+  onOpenAuth?: () => void;
+  onAdminLogin?: (user: User) => void;
+  onAdminLogout?: () => void;
+  onNavigateToUserPortal?: () => void;
+}
+
+export const AdminPortal: React.FC<AdminPortalProps> = ({
+  currentUser,
+  onOpenAuth,
+  onAdminLogin,
+  onAdminLogout,
+  onNavigateToUserPortal,
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState<'products' | 'categories' | 'orders' | 'reviews' | 'users'>('products');
   
   // Data states
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Admin Login Form States
+  const [adminEmail, setAdminEmail] = useState('admin@sereno.ch');
+  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+  const [adminLoginError, setAdminLoginError] = useState('');
 
   // Modals state
   const [showProductModal, setShowProductModal] = useState(false);
@@ -73,16 +104,18 @@ export const AdminPortal: React.FC = () => {
   const loadAllData = async () => {
     try {
       setLoading(true);
-      const [prodsData, catsData, ordersData, reviewsData] = await Promise.all([
+      const [prodsData, catsData, ordersData, reviewsData, usersData] = await Promise.all([
         api.getProducts(),
         api.getCategories(),
         api.getOrders(),
         api.getReviews(),
+        api.getUsers(),
       ]);
       setProducts(prodsData);
       setCategories(catsData);
       setOrders(ordersData);
       setReviews(reviewsData);
+      setUsersList(usersData);
     } catch (err: any) {
       notify('error', err.message || 'Failed to load database records');
     } finally {
@@ -90,9 +123,38 @@ export const AdminPortal: React.FC = () => {
     }
   };
 
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoginError('');
+    setAdminLoginLoading(true);
+    try {
+      const response = await api.login({ email: adminEmail.trim(), password: adminPassword });
+      if (response.user.role !== 'manager') {
+        throw new Error('Access denied: This account is registered as a Customer. Please sign in with Store Manager or Executive Administrator credentials.');
+      }
+      notify('success', `Access granted. Welcome to the Management Atelier, ${response.user.name}!`);
+      if (onAdminLogin) {
+        onAdminLogin(response.user);
+      }
+      loadAllData();
+    } catch (err: any) {
+      setAdminLoginError(err.message || 'Invalid administrator email or password credentials.');
+    } finally {
+      setAdminLoginLoading(false);
+    }
+  };
+
+  const fillAdminCredentials = (email: string, pass: string) => {
+    setAdminEmail(email);
+    setAdminPassword(pass);
+    setAdminLoginError('');
+  };
+
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (currentUser?.role === 'manager') {
+      loadAllData();
+    }
+  }, [currentUser]);
 
   // ================= PRODUCTS CRUD HANDLERS =================
   const handleOpenCreateProduct = () => {
@@ -277,6 +339,156 @@ export const AdminPortal: React.FC = () => {
       p.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // =========================================================
+  // ADMIN AUTHENTICATION GATE (RESTRICTED ACCESS)
+  // =========================================================
+  if (currentUser?.role !== 'manager') {
+    return (
+      <div className="py-12 bg-[#0b0c10] min-h-[85vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-[#11141c] border border-[#2d374d] rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+          {/* Subtle gold luxury background glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-[#c5a880] to-transparent"></div>
+
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 mx-auto rounded-full bg-[#1b2131] border border-[#c5a880]/50 flex items-center justify-center text-[#c5a880] mb-3 shadow-lg">
+              <Lock className="w-7 h-7" />
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#c5a880] font-bold">
+              Restricted Back-Office
+            </div>
+            <h1 className="font-serif text-2xl font-bold text-white mt-1">
+              Management Atelier (Admin Portal)
+            </h1>
+            <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+              This administrative portal requires authorized Store Manager or Executive credentials to modify timepiece inventory, update shipping milestones, and moderate reviews.
+            </p>
+          </div>
+
+          {/* Current Customer Notice if logged in as Customer */}
+          {currentUser && (
+            <div className="mb-5 p-3 rounded-xl bg-amber-950/40 border border-amber-800/50 text-xs text-amber-200 flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-white">Signed in as Collector (Customer):</p>
+                <p className="text-[11px] text-amber-300 font-mono mt-0.5">{currentUser.name} ({currentUser.email})</p>
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Customer accounts do not possess administrative permissions. Sign in with an authorized manager account below.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Alert */}
+          {adminLoginError && (
+            <div className="mb-4 p-3 rounded-lg bg-rose-950/60 border border-rose-800/60 text-xs text-rose-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{adminLoginError}</span>
+            </div>
+          )}
+
+          {/* Admin Login Form */}
+          <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">
+                Administrator / Manager Email
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@sereno.ch"
+                  className="w-full bg-[#181d2a] border border-[#2d374d] rounded-xl py-2.5 pl-9 pr-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[#c5a880]"
+                />
+                <UserIcon className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">
+                Security Password
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#181d2a] border border-[#2d374d] rounded-xl py-2.5 pl-9 pr-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-[#c5a880]"
+                />
+                <Key className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={adminLoginLoading}
+              className="w-full py-3 px-4 rounded-xl bg-[#c5a880] hover:bg-white text-black font-serif font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer"
+            >
+              {adminLoginLoading ? (
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <Briefcase className="w-4 h-4" />
+                  <span>Authenticate & Enter Atelier</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Quick-Fill Demo Credentials */}
+          <div className="mt-6 pt-5 border-t border-[#232838]">
+            <p className="text-[11px] font-mono text-neutral-400 text-center uppercase tracking-wider mb-2.5">
+              Quick-Fill Verified Test Credentials
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => fillAdminCredentials('admin@sereno.ch', 'admin123')}
+                className="p-2.5 rounded-lg bg-[#181d2a] hover:bg-[#232b3d] border border-[#2e374c] hover:border-[#c5a880]/60 text-left transition-all group"
+              >
+                <div className="text-[10px] font-bold text-[#c5a880] uppercase tracking-wider flex items-center justify-between">
+                  <span>Executive Admin</span>
+                  <span className="text-[9px] text-emerald-400 font-mono">1-Click</span>
+                </div>
+                <div className="text-white font-medium text-[11px] truncate mt-0.5">admin@sereno.ch</div>
+                <div className="text-[10px] text-neutral-500 font-mono">Pass: admin123</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillAdminCredentials('manager@sereno.ch', 'admin')}
+                className="p-2.5 rounded-lg bg-[#181d2a] hover:bg-[#232b3d] border border-[#2e374c] hover:border-[#c5a880]/60 text-left transition-all group"
+              >
+                <div className="text-[10px] font-bold text-[#c5a880] uppercase tracking-wider flex items-center justify-between">
+                  <span>Store Manager</span>
+                  <span className="text-[9px] text-emerald-400 font-mono">1-Click</span>
+                </div>
+                <div className="text-white font-medium text-[11px] truncate mt-0.5">manager@sereno.ch</div>
+                <div className="text-[10px] text-neutral-500 font-mono">Pass: admin</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Back to Collector Shop (User Portal) */}
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={onNavigateToUserPortal}
+              className="text-xs text-neutral-400 hover:text-[#c5a880] transition-colors inline-flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Collector Boutique (User Portal)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-10 bg-[#0b0c10] min-h-[90vh]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -286,24 +498,46 @@ export const AdminPortal: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#c5a880] font-bold mb-1">
               <Layers className="w-4 h-4" />
-              <span>SERENO Genève • Boutique Administration</span>
+              <span>SERENO Genève • Boutique Administration Suite</span>
             </div>
             <h1 className="font-serif text-3xl font-bold text-white">
-              Inventory & Order Management
+              Management Atelier (Admin Portal)
             </h1>
             <p className="text-xs text-neutral-400 mt-1">
               Live catalog controls, real-time inventory adjustments, order fulfillment, and client reviews.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {onNavigateToUserPortal && (
+              <button
+                onClick={onNavigateToUserPortal}
+                className="px-3.5 py-2 rounded-lg bg-[#181d2a] border border-[#2d374d] text-[#c5a880] hover:text-white hover:border-[#c5a880] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="Go to customer shop view"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Collector Boutique (User Portal)</span>
+              </button>
+            )}
+
+            {onAdminLogout && (
+              <button
+                onClick={onAdminLogout}
+                className="px-3.5 py-2 rounded-lg bg-rose-950/40 hover:bg-rose-950/80 border border-rose-800/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                title="Sign out from management atelier"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Admin Sign Out</span>
+              </button>
+            )}
+
             <button
               onClick={handleResetDatabase}
-              className="px-4 py-2 rounded-lg bg-[#1a1f2c] border border-[#2b3347] text-neutral-300 hover:text-white hover:border-[#c5a880] text-xs font-semibold flex items-center gap-2 transition-colors"
+              className="px-3 py-2 rounded-lg bg-[#1a1f2c] border border-[#2b3347] text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
               title="Restore default catalog inventory"
             >
               <RotateCcw className="w-3.5 h-3.5 text-[#c5a880]" />
-              <span>Restore Catalog Defaults</span>
+              <span className="hidden sm:inline">Reset Defaults</span>
             </button>
 
             {activeSubTab === 'products' && (
@@ -325,6 +559,26 @@ export const AdminPortal: React.FC = () => {
                 <span>Add Category</span>
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Manager Mode Banner */}
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#141926] via-[#1c2234] to-[#141926] border border-[#2d374d] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white flex items-center gap-2">
+                <span>Manager Session: {currentUser?.name || 'Authorized Boutique Director'}</span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-mono uppercase font-bold">
+                  Store Manager Verified
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Authenticated account: <strong className="text-white">{currentUser?.email}</strong>. Full access granted to catalog, inventory, order tracking, and client reviews.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -435,6 +689,18 @@ export const AdminPortal: React.FC = () => {
           >
             <MessageSquare className="w-4 h-4" />
             <span>Customer Reviews ({reviews.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('users')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors ${
+              activeSubTab === 'users'
+                ? 'bg-[#c5a880] text-black font-bold'
+                : 'bg-[#141822] text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Accounts & Collectors ({usersList.length})</span>
           </button>
         </div>
 
@@ -672,6 +938,75 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 5: REGISTERED ACCOUNTS & COLLECTORS RESOURCE */}
+        {/* ========================================================= */}
+        {activeSubTab === 'users' && (
+          <div className="bg-[#121622] border border-[#232838] rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-5 border-b border-[#232838] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#c5a880]" />
+                  <span>Registered Collectors & Administrative Accounts</span>
+                </h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Full list of authenticated clients and authorized store managers.
+                </p>
+              </div>
+              <span className="text-xs font-mono bg-[#1c2230] text-[#c5a880] px-3 py-1.5 rounded-lg border border-[#2b3347] self-start sm:self-auto">
+                {usersList.length} Registered Accounts
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-[#d1d5e2]">
+                <thead className="bg-[#171c28] text-[#8e95a8] uppercase text-[10px] tracking-wider border-b border-[#232838]">
+                  <tr>
+                    <th className="p-4">User & Name</th>
+                    <th className="p-4">Access Role</th>
+                    <th className="p-4">Direct Contact</th>
+                    <th className="p-4">Residence / City</th>
+                    <th className="p-4">Registration Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e2333]">
+                  {usersList.map((u) => (
+                    <tr key={u.id} className="hover:bg-[#181d2a] transition-colors">
+                      <td className="p-4 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[#1e2538] border border-[#2e3954] text-[#c5a880] font-bold flex items-center justify-center shrink-0">
+                          {u.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-white">{u.name}</div>
+                          <div className="font-mono text-[11px] text-neutral-400">{u.email}</div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase border ${
+                          u.role === 'manager'
+                            ? 'bg-amber-950/60 border-amber-600/60 text-amber-300'
+                            : 'bg-cyan-950/60 border-cyan-600/60 text-cyan-300'
+                        }`}>
+                          {u.role === 'manager' ? 'Store Manager' : 'Collector'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-neutral-300 font-mono text-[11px]">
+                        {u.phone || '—'}
+                      </td>
+                      <td className="p-4 text-neutral-300">
+                        {u.city ? `${u.city}, ${u.country || 'Switzerland'}` : '—'}
+                      </td>
+                      <td className="p-4 text-neutral-400 text-[11px]">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

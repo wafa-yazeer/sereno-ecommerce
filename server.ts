@@ -264,10 +264,12 @@ async function startServer() {
   // GET /api/orders
   app.get('/api/orders', (req: Request, res: Response) => {
     try {
-      const { status, search } = req.query;
+      const { status, search, email, userId } = req.query;
       const orders = db.getOrders({
         status: status as string,
         search: search as string,
+        email: email as string,
+        userId: userId as string,
       });
       return sendSuccess(res, orders);
     } catch (err: any) {
@@ -288,6 +290,7 @@ async function startServer() {
   app.post('/api/orders', (req: Request, res: Response) => {
     try {
       const {
+        userId,
         customerName,
         customerEmail,
         customerPhone,
@@ -317,6 +320,7 @@ async function startServer() {
       }
 
       const order = db.createOrder({
+        userId,
         customerName,
         customerEmail,
         customerPhone,
@@ -431,6 +435,82 @@ async function startServer() {
     }
 
     return sendSuccess(res, result, result.message);
+  });
+
+  // ==========================================
+  // 6. AUTHENTICATION & USERS RESOURCE
+  // ==========================================
+  // POST /api/auth/register (Create account)
+  app.post('/api/auth/register', (req: Request, res: Response) => {
+    try {
+      const { name, email, password, role, phone, shippingAddress, city, postalCode, country } = req.body;
+
+      if (!name || name.trim().length < 2) {
+        return sendError(res, 'Full name is required (min 2 characters).', 400);
+      }
+      if (!email || !email.includes('@')) {
+        return sendError(res, 'Valid email address is required.', 400);
+      }
+      if (!password || password.length < 4) {
+        return sendError(res, 'Password must be at least 4 characters.', 400);
+      }
+
+      const user = db.createUser({
+        name,
+        email,
+        password,
+        role: role === 'manager' ? 'manager' : 'customer',
+        phone,
+        shippingAddress,
+        city,
+        postalCode,
+        country,
+      });
+
+      return sendSuccess(res, { user, token: `tok-${Date.now()}` }, 'Account successfully created! Welcome to SERENO Genève.', 201);
+    } catch (err: any) {
+      return sendError(res, err.message || 'Registration failed.', 400);
+    }
+  });
+
+  // POST /api/auth/login (Sign in)
+  app.post('/api/auth/login', (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return sendError(res, 'Email and password are required.', 400);
+      }
+
+      const existingUser = db.findUserByEmail(email);
+      if (!existingUser) {
+        return sendError(res, 'Account not found. Please check your email or register.', 401);
+      }
+
+      if (existingUser.password && existingUser.password !== password) {
+        return sendError(res, 'Invalid password credentials.', 401);
+      }
+
+      const { password: _, ...user } = existingUser;
+      return sendSuccess(res, { user, token: `tok-${Date.now()}` }, `Welcome back, ${user.name}!`);
+    } catch (err: any) {
+      return sendError(res, err.message || 'Login failed.', 400);
+    }
+  });
+
+  // GET /api/auth/users (List users for admin/management)
+  app.get('/api/auth/users', (req: Request, res: Response) => {
+    const users = db.getUsers();
+    return sendSuccess(res, users);
+  });
+
+  // PUT /api/auth/profile/:id (Update user profile)
+  app.put('/api/auth/profile/:id', (req: Request, res: Response) => {
+    try {
+      const updated = db.updateUser(req.params.id, req.body);
+      return sendSuccess(res, updated, 'Profile updated successfully');
+    } catch (err: any) {
+      return sendError(res, err.message || 'Failed to update profile', 400);
+    }
   });
 
   // ==========================================

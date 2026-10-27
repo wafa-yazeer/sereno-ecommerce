@@ -12,7 +12,7 @@ import {
   Sparkles,
   AlertCircle
 } from 'lucide-react';
-import { Product, Review } from '../types';
+import { Product, Review, User } from '../types';
 import { api } from '../services/api';
 
 interface ProductDetailModalProps {
@@ -20,6 +20,9 @@ interface ProductDetailModalProps {
   onClose: () => void;
   onAddToCart: (product: Product, quantity: number) => void;
   onProductUpdated?: (updatedProduct: Product) => void;
+  currentUser?: User | null;
+  onOpenAuth?: () => void;
+  initialTab?: 'specs' | 'reviews';
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -27,16 +30,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   onAddToCart,
   onProductUpdated,
+  currentUser,
+  onOpenAuth,
+  initialTab = 'specs',
 }) => {
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'specs' | 'reviews'>('specs');
+  const [activeTab, setActiveTab] = useState<'specs' | 'reviews'>(initialTab);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [addedAnimation, setAddedAnimation] = useState(false);
 
   // Review form state
-  const [reviewName, setReviewName] = useState('');
+  const [reviewName, setReviewName] = useState(currentUser?.name || '');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
@@ -45,14 +51,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
+    if (currentUser?.name) {
+      setReviewName(currentUser.name);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     if (product) {
       setSelectedImage(product.imageUrl);
       setQuantity(1);
       fetchReviews(product.id);
       setReviewSuccess('');
       setReviewError('');
+      if (initialTab) setActiveTab(initialTab);
     }
-  }, [product]);
+  }, [product, initialTab]);
 
   const fetchReviews = async (productId: string) => {
     try {

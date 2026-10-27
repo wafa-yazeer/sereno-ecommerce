@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-gold: #c5a880;
+  --color-gold-hover: #d8be98;
+  --color-dark-bg: #0b0c10;
+  --color-dark-card: #141822;
+  --color-dark-border: #232733;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: #0b0c10;
+    color: #e0e2ec;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom scrollbar for dark horlogerie theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b0c10;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232733;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4256;
+}
