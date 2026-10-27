@@ -18,7 +18,6 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { OrdersTracker } from './components/OrdersTracker';
 import { AdminPortal } from './components/AdminPortal';
-import { AtelierModal } from './components/AtelierModal';
 import { WishlistModal } from './components/WishlistModal';
 import { AuthModal } from './components/AuthModal';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -33,7 +32,7 @@ export default function App() {
     } catch (e) {
       // ignore
     }
-    // Default initial customer session for immediate demonstration
+    // Default initial collector session for quick preview
     return {
       id: 'usr-customer-1',
       name: 'Alexander Vance',
@@ -75,7 +74,6 @@ export default function App() {
     } catch (e) {
       // ignore
     }
-    // Default sample item for immediate showcase
     return [
       {
         product: INITIAL_PRODUCTS[0],
@@ -100,7 +98,6 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isAtelierOpen, setIsAtelierOpen] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
   // Voucher
@@ -182,7 +179,7 @@ export default function App() {
         setCategories(catsData.value);
       }
     } catch (err) {
-      console.warn('Backend currently connecting, using responsive atelier cache', err);
+      console.warn('Backend currently connecting, using local catalog cache', err);
     } finally {
       setIsLoading(false);
     }
@@ -240,7 +237,7 @@ export default function App() {
     setCompletedOrder(order);
     setIsCheckoutOpen(false);
     setCart([]);
-    loadData(); // refresh stock numbers
+    loadData();
   };
 
   const handleOpenAuthModal = (mode: 'login' | 'register' = 'login', notice = '') => {
@@ -254,7 +251,7 @@ export default function App() {
       setIsCartOpen(false);
       handleOpenAuthModal(
         'register',
-        'Please create an account or sign in to complete your timepiece acquisition and secure your insured warranty.'
+        'Please sign in or create an account to complete your timepiece acquisition.'
       );
       return;
     }
@@ -282,7 +279,6 @@ export default function App() {
           setSelectedCategory(catId);
           setActiveView('shop');
         }}
-        onOpenAtelier={() => setIsAtelierOpen(true)}
         cartCount={cart.reduce((sum, i) => sum + i.quantity, 0)}
         wishlistCount={wishlist.length}
         onOpenCart={() => setIsCartOpen(true)}
@@ -298,7 +294,7 @@ export default function App() {
       <main className="flex-1">
         {activeView === 'shop' && (
           <>
-            {/* Hero Section */}
+            {/* Minimal Hero Section */}
             <HeroSection
               featuredProduct={featuredProduct}
               onExplore={() => {
@@ -309,10 +305,9 @@ export default function App() {
                 setSelectedProduct(p);
                 setProductDetailTab('specs');
               }}
-              onOpenAtelier={() => setIsAtelierOpen(true)}
             />
 
-            {/* Feature Highlights Bar */}
+            {/* Concise Feature Highlights */}
             <FeatureHighlights />
 
             {/* Timepieces Catalog & Filter Grid */}
@@ -340,10 +335,10 @@ export default function App() {
         )}
 
         {activeView === 'orders' && (
-          <div className="py-10">
+          <div className="py-6">
             <OrdersTracker
               currentUser={currentUser}
-              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in to access your complete timepiece order history.')}
+              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in to access your personal timepiece order history.')}
               onSelectProductForReview={handleOpenProductReviews}
             />
           </div>
@@ -353,7 +348,7 @@ export default function App() {
           <div className="py-6">
             <AdminPortal
               currentUser={currentUser}
-              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in as a Store Manager for verified management access.')}
+              onOpenAuth={() => handleOpenAuthModal('login', 'Sign in as a Store Manager for management access.')}
               onAdminLogin={(user) => {
                 setCurrentUser(user);
               }}
@@ -367,11 +362,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Haute Horlogerie Atelier Footer */}
-      <Footer
-        onNavigate={setActiveView}
-        onOpenAtelier={() => setIsAtelierOpen(true)}
-      />
+      {/* Minimal Footer */}
+      <Footer onNavigate={setActiveView} />
 
       {/* Product Detail Modal */}
       <ProductDetailModal
@@ -414,7 +406,7 @@ export default function App() {
         onAddToCart={(p) => handleAddToCart(p, 1)}
       />
 
-      {/* White-Glove Checkout Modal */}
+      {/* Checkout Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
@@ -436,21 +428,7 @@ export default function App() {
         }}
       />
 
-      {/* L'Atelier d'Horlogerie Modal */}
-      <AtelierModal
-        isOpen={isAtelierOpen}
-        onClose={() => setIsAtelierOpen(false)}
-        onExploreCollection={() => {
-          setIsAtelierOpen(false);
-          setActiveView('shop');
-          setTimeout(() => {
-            const el = document.getElementById('collection-grid-section');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-        }}
-      />
-
-      {/* Authentication Modal (Create Account / Sign In) */}
+      {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -462,13 +440,12 @@ export default function App() {
         redirectNotice={authRedirectNotice}
       />
 
-      {/* User Profile Modal */}
+      {/* User Profile Modal (View-Only Shipping Details) */}
       {currentUser && (
         <UserProfileModal
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}
           user={currentUser}
-          onUpdateUser={setCurrentUser}
           onLogout={() => {
             setCurrentUser(null);
             localStorage.removeItem('sereno_user');
