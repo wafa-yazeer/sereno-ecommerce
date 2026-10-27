@@ -1,0 +1,277 @@
+{
+  "info": {
+    "name": "SERENO Luxury E-Commerce - Java Spring Boot REST API Collection",
+    "description": "Complete Postman collection for testing all CRUD endpoints across Products, Categories, Orders, and Reviews resources for SERENO Genève Spring Boot backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Products Resource (CRUD)",
+      "item": [
+        {
+          "name": "GET All Products (with filters)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?category=all&sort=newest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"],
+              "query": [
+                { "key": "category", "value": "all" },
+                { "key": "sort", "value": "newest" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Product By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/prod-aurix-chrono",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "prod-aurix-chrono"]
+            }
+          }
+        },
+        {
+          "name": "POST Create New Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sereno Tourbillon Perpetual\",\n  \"sku\": \"SER-TRB-99\",\n  \"categoryId\": \"cat-automatic\",\n  \"price\": 580.00,\n  \"originalPrice\": 690.00,\n  \"stock\": 5,\n  \"description\": \"Masterpiece complication with titanium flying tourbillon carriage and 72-hour power reserve.\",\n  \"dialColor\": \"Midnight Blue Enamel\",\n  \"caseSize\": \"41 MM\",\n  \"movement\": \"Calibre S-99 In-House Hand-Wound\",\n  \"glass\": \"Domed Sapphire Crystal with AR Coating\",\n  \"waterResistance\": \"10 ATM (100m)\",\n  \"strap\": \"Alligator Grain Hand-Stitched Leather\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=800\",\n  \"badge\": \"Grand Complication\",\n  \"featured\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "PUT Update Existing Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sereno Chrono Classic Ivory (Refreshed Edition)\",\n  \"sku\": \"SER-CHR-01\",\n  \"categoryId\": \"cat-chronograph\",\n  \"price\": 235.00,\n  \"originalPrice\": 295.00,\n  \"stock\": 20,\n  \"description\": \"Updated with improved anti-reflective sapphire crystal and quick-release spring bars.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/prod-aurix-chrono",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "prod-aurix-chrono"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Product by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/prod-aurix-chrono",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "prod-aurix-chrono"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Categories Resource (CRUD)",
+      "item": [
+        {
+          "name": "GET All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            }
+          }
+        },
+        {
+          "name": "POST Create New Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tourbillon & Complications\",\n  \"description\": \"Haute horlogerie masterpieces featuring complex escapements and skeletonized movements.\",\n  \"imageUrl\": \"https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories"]
+            }
+          }
+        },
+        {
+          "name": "PUT Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chronographs & Regattas\",\n  \"description\": \"Dual and triple register timers with tachymeter scales.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/cat-chronograph",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "cat-chronograph"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/cat-aviation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "categories", "cat-aviation"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Orders Resource (CRUD)",
+      "item": [
+        {
+          "name": "GET All Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "POST Place Customer Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Eleanor Beaumont\",\n  \"customerEmail\": \"e.beaumont@horology.com\",\n  \"customerPhone\": \"+41 22 910 8820\",\n  \"shippingAddress\": \"Boulevard des Tranchées 22\",\n  \"city\": \"Geneva\",\n  \"postalCode\": \"1206\",\n  \"country\": \"Switzerland\",\n  \"paymentMethod\": \"Credit / Debit Card\",\n  \"couponCode\": \"SERENO10\",\n  \"notes\": \"Please include numbered certificate of chronometer testing\",\n  \"items\": [\n    {\n      \"productId\": \"prod-vanguard-auto\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "GET Track Order by Order Number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/track/SRN-89241",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "track", "SRN-89241"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Delivered\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/ord-sample-01/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "ord-sample-01", "status"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Cancel Order",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/ord-sample-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "ord-sample-01"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Customer Reviews",
+      "item": [
+        {
+          "name": "GET Product Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews?productId=prod-aurix-chrono",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews"],
+              "query": [
+                { "key": "productId", "value": "prod-aurix-chrono" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Submit New Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"prod-aurix-chrono\",\n  \"author\": \"Maximilian von Berg\",\n  \"rating\": 5,\n  \"title\": \"Flawless timekeeper with vintage flair\",\n  \"comment\": \"The chamfering on the lugs catches light brilliantly. Beautiful piece.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
